@@ -69,10 +69,10 @@ def add_watermark(cover_path, watermark_path, alpha=0.1):
     watermarked_image = pywt.waverec2(watermarked_coeffs, 'haar')
     watermarked_image = np.clip(watermarked_image, 0, 255).astype(np.uint8)
 
-    return watermarked_image, Sc, Sw, Uc, Vc, Uw, Vw, LL_w
+    return watermarked_image, Sc, Sw, Uc, Vc, Uw, Vw, LL_w, LH_w, HH_w
 
 
-def extract_watermark(watermarked_image, Sc, Uw, Vw, LL_w, alpha=0.1):
+def extract_watermark(watermarked_image, Sc, Uw, Vw, LL_w, LH_w, HH_w, alpha=0.1):
     LL2, (HL2_new, LH2, HH2), (HL1, LH1, HH1) = pywt.wavedec2(watermarked_image, 'haar', level=2)
 
     # Watermarked HL2 bandına SVD uygulama
@@ -84,8 +84,8 @@ def extract_watermark(watermarked_image, Sc, Uw, Vw, LL_w, alpha=0.1):
     HL_w_extracted = np.dot(Uw, np.dot(np.diag(Sw_extracted), Vw))
     recovered_coeffs = (LL_w, 
                         (HL_w_extracted,
-                         np.zeros_like(HL_w_extracted),
-                         np.zeros_like(HL_w_extracted)))
+                         LH_w,
+                         HH_w))
     recovered_watermark = pywt.idwt2(recovered_coeffs, 'haar')
     recovered_watermark = np.clip(recovered_watermark, 0, 255).astype(np.uint8)
 
@@ -137,9 +137,9 @@ if __name__ == "__main__":
     watermark_image_path = 'watermark.jpg'
     alpha = 0.2
 
-    watermarked_image, Sc, Sw, Uc, Vc, Uw, Vw, LL_w = add_watermark(cover_image_path, watermark_image_path, alpha=alpha)
+    watermarked_image, Sc, Sw, Uc, Vc, Uw, Vw, LL_w, LH_w, HH_w = add_watermark(cover_image_path, watermark_image_path, alpha=alpha)
     cv2.imwrite('watermarked_image.png', watermarked_image)
-    recovered_watermark = extract_watermark(watermarked_image, Sc, Uw, Vw, LL_w, alpha=alpha)
+    recovered_watermark = extract_watermark(watermarked_image, Sc, Uw, Vw, LL_w, LH_w, HH_w, alpha=alpha)
     cv2.imwrite('recovered_watermark.png', recovered_watermark)
 
     cover = cv2.imread(cover_image_path, 0)
@@ -188,7 +188,7 @@ if __name__ == "__main__":
             # Atağı uygula
             attacked_img = apply_attack(watermarked_image, attack_type, param)
             # Watermark'ı çıkar
-            recovered_wm = extract_watermark(attacked_img, Sc, Uw, Vw, LL_w, alpha=alpha)
+            recovered_wm = extract_watermark(attacked_img, Sc, Uw, Vw, LL_w, LH_w, HH_w, alpha=alpha)
         
         attacked_images.append(attacked_img)
         recovered_watermarks.append(recovered_wm)
